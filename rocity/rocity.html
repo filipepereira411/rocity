@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>RoCity RPG - Edição HTML</title>
+    <style>
+        body {
+            background-color: #1a1a24;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+        }
+        h1 { color: #f7a23b; margin: 5px; }
+        .hud {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            background: #252538;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #f7a23b;
+        }
+        #cenario {
+            position: relative;
+            width: 800px;
+            height: 450px;
+            background-color: #3a3a4a; /* Asfalto/Chão da cidade */
+            border: 4px solid #111;
+            margin: 0 auto;
+            border-radius: 6px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        /* Prédios da Cidade */
+        .predio {
+            position: absolute;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+        }
+        .hamburgueria { background: #d9534f; width: 150px; height: 120px; top: 20px; left: 50px; }
+        .banco { background: #5cb85c; width: 140px; height: 120px; top: 20px; left: 330px; }
+        .concessionaria { background: #0275d8; width: 160px; height: 120px; top: 20px; left: 580px; }
+        .casa { background: #f0ad4e; width: 180px; height: 110px; bottom: 20px; left: 50px; }
+        
+        .zona-trabalho {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        /* Jogador (Avatar do Roblox) */
+        #jogador {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            background-color: #f39c12; /* Cor do boneco */
+            border: 2px solid #fff;
+            border-radius: 4px;
+            top: 250px;
+            left: 380px;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        .notificacao {
+            color: #5cb85c;
+            font-weight: bold;
+            margin-top: 10px;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>RoCity Simulator 🏢</h1>
+    <p style="margin: 0 0 15px 0; color: #aaa;">Use as setas do teclado ou WASD para andar até aos edifícios e interagir.</p>
+
+    <div class="hud">
+        <div>💰 Carteira: <span id="val-dinheiro">100</span>$</div>
+        <div>🚗 Carro Atual: <span id="val-carro">Nenhum (A pé)</span></div>
+        <div>🏠 Propriedade: <span id="val-casa">Sem abrigo</span></div>
+    </div>
+
+    <!-- O Mapa de RoCity -->
+    <div id="cenario">
+        <!-- Locais de Emprego e Compra -->
+        <div class="predio hamburgueria">🍔 Burger Shop<div class="zona-trabalho">Trabalhar (Ganha +20$)</div></div>
+        <div class="predio banco">🏦 Banco de RoCity<div class="zona-trabalho">Levantar Bónus</div></div>
+        <div class="predio concessionaria">🚗 Stand Automóvel<div class="zona-trabalho">Comprar Carro (500$)</div></div>
+        <div class="predio casa">🏡 Lote de Casa<div class="zona-trabalho">Comprar Casa (300$)</div></div>
+
+        <!-- O Boneco do Jogador -->
+        <div id="jogador">😀</div>
+    </div>
+
+    <div class="notificacao" id="msg-alerta"></div>
+
+<script>
+    // Dados do Jogador
+    let jogadorX = 380;
+    let jogadorY = 250;
+    let dinheiro = 100;
+    let temCarro = false;
+    let temCasa = false;
+    const velocidadeBase = 8;
+
+    const jogador = document.getElementById('jogador');
+    const msgAlerta = document.getElementById('msg-alerta');
+
+    // Controlos de Movimento (Setas e WASD)
+    window.addEventListener('keydown', (e) => {
+        let vel = temCarro ? velocidadeBase * 2 : eccentricity = velocidadeBase; // Carro anda mais rápido!
+        
+        if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') jogadorY -= vel;
+        if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') jogadorY += vel;
+        if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') jogadorX -= vel;
+        if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') jogadorX += vel;
+
+        // Limites do ecrã do mapa
+        if (jogadorX < 0) jogadorX = 0;
+        if (jogadorX > 765) jogadorX = 765;
+        if (jogadorY < 0) jogadorY = 0;
+        if (jogadorY > 415) jogadorY = 415;
+
+        atualizarPosicao();
+        verificarColisoes();
+    });
+
+    function atualizarPosicao() {
+        jogador.style.left = jogadorX + 'px';
+        jogador.style.top = jogadorY + 'px';
+    }
+
+    // Sistema de Colisão e Ações nos Edifícios de RoCity
+    function verificarColisoes() {
+        // 1. TRABALHAR NA HAMBURGUERIA (Top: 20-140, Left: 50-200)
+        if (jogadorY < 140 && jogadorX > 30 && jogadorX < 200) {
+            dinheiro += 20;
+            mostrarNotificacao("🍔 Trabalhou na Hamburgueria! Ganhou +20$");
+            recuarJogador();
+        }
+        // 2. RECOLHER DINHEIRO NO BANCO (Top: 20-140, Left: 330-470)
+        else if (jogadorY < 140 && jogadorX > 310 && jogadorX < 470) {
+            dinheiro += 50;
+            mostrarNotificacao("🏦 Bónus de Cidadão recolhido! +50$");
+            recuarJogador();
+        }
+        // 3. COMPRAR CARRO (Top: 20-140, Left: 580-740)
+        else if (jogadorY < 140 && jogadorX > 560 && jogadorX < 740) {
+            if (!temCarro && dinheiro >= 500) {
+                dinheiro -= 500;
+                temCarro = true;
+                jogador.innerText = "🏎️"; // Muda o visual do avatar para um carro
+                document.getElementById('val-carro').innerText = "Super Carro Desportivo";
+                mostrarNotificacao("🚗 Parabéns! Comprou um carro. Agora move-se 2x mais rápido!");
+            } else if (temCarro) {
+                mostrarNotificacao("🏎️ Já tem o melhor carro da concessionária.");
+            } else {
+                mostrarNotificacao("❌ Dinheiro insuficiente! O carro custa 500$.");
+            }
+            recuarJogador();
+        }
+        // 4. COMPRAR CASAR (Bottom: 320-430, Left: 50-230)
+        else if (jogadorY > 300 && jogadorX > 30 && jogadorX < 230) {
+            if (!temCasa && dinheiro >= 300) {
+                dinheiro -= 300;
+                temCasa = true;
+                document.getElementById('val-casa').innerText = "Mansão em RoCity";
+                mostrarNotificacao("🏡 Comprou a sua própria casa em RoCity!");
+            } else if (temCasa) {
+                mostrarNotificacao("🏡 Bem-vindo de volta à sua casa!");
+            } else {
+                mostrarNotificacao("❌ Dinheiro insuficiente! A casa custa 300$.");
+            }
+            recuarJogador();
+        }
+
+        document.getElementById('val-dinheiro').innerText = dinheiro;
+    }
+
+    function recuarJogador() {
+        // Empurra ligeiramente o jogador para trás para ele não ficar preso no loop de colisão
+        jogadorY += 25;
+        atualizarPosicao();
+    }
+
+    function mostrarNotificacao(texto) {
+        msgAlerta.innerText = texto;
+        setTimeout(() => { if(msgAlerta.innerText === texto) msgAlerta.innerText = ""; }, 3000);
+    }
+</script>
+
+</body>
+</html>
